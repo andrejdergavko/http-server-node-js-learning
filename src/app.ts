@@ -9,6 +9,7 @@ import { IExaptionFilter } from './errors/exaption.filter.interface';
 import { TYPES } from './types';
 import { ILogger } from './logger/logger.interface';
 import { IConfigService } from './config/config.service.interface';
+import { PrismaService } from './database/prisma.service';
 
 @injectable()
 export class App {
@@ -21,6 +22,7 @@ export class App {
 		@inject(TYPES.UserController) private userController: UsersController,
 		@inject(TYPES.ExaptionFilter) private exaptionFilter: IExaptionFilter,
 		@inject(TYPES.ConfigService) private config: IConfigService,
+		@inject(TYPES.PrismaService) private prismaService: PrismaService,
 	) {
 		this.app = express();
 		this.port = 8000;
@@ -42,6 +44,7 @@ export class App {
 		this.useMiddleware();
 		this.useRoutes();
 		this.useExaptionFilters();
+		await this.prismaService.connect();
 		this.server = this.app.listen(this.port);
 		this.logger.log(`Сервер запущен на http://localhost:${this.port}`);
 	}
