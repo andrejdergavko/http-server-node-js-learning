@@ -7,6 +7,7 @@ import { IUserService } from './users.service.interface';
 import { IConfigService } from '../config/config.service.interface';
 import { TYPES } from '../types';
 import { IUserRepository } from './users.repository.interface';
+import { GetUser } from './dto/get-user.dto';
 
 @injectable()
 export class UserService implements IUserService {
@@ -27,6 +28,10 @@ export class UserService implements IUserService {
 		}
 
 		return this.userRepository.create(newUser);
+	}
+
+	async getUser({ email }: GetUser): Promise<UserModel | null> {
+		return this.userRepository.find(email);
 	}
 
 	async validateUser({ email, password }: UserLoginDto): Promise<boolean> {

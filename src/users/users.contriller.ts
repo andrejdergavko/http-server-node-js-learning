@@ -13,6 +13,7 @@ import { UserRegisterDto } from './dto/user-register.dto';
 import { IUserService } from './users.service.interface';
 import { ValidateMiddleware } from '../common/validate.middleware';
 import { IConfigService } from '../config/config.service.interface';
+import { AuthGuard } from '../common/auth.guard.middleware';
 
 @injectable()
 export class UsersController extends BaseController implements IUserController {
@@ -40,7 +41,7 @@ export class UsersController extends BaseController implements IUserController {
 				path: '/info',
 				method: 'get',
 				func: this.info,
-				middlewares: [],
+				middlewares: [new AuthGuard()],
 			},
 		]);
 	}
@@ -77,7 +78,13 @@ export class UsersController extends BaseController implements IUserController {
 	}
 
 	async info(req: Request, res: Response, next: NextFunction): Promise<void> {
-		res.send({ email: req.user });
+		const user = await this.userService.getUser({ email: req.user });
+
+		if (!user) {
+			return next(new HTTPError(404, 'User not found'));
+		}
+
+		res.send({ id: user.id, email: user.email });
 	}
 
 	private signJWT(email: string, secret: string): Promise<string> {
