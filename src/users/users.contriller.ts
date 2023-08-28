@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from 'express';
 import { injectable, inject } from 'inversify';
 import 'reflect-metadata';
+import { sign } from 'jsonwebtoken';
 
 import { BaseController } from '../common/base.controller';
 import { ILogger } from '../logger/logger.interface';
@@ -11,12 +12,14 @@ import { UserLoginDto } from './dto/user-login.dto';
 import { UserRegisterDto } from './dto/user-register.dto';
 import { IUserService } from './users.service.interface';
 import { ValidateMiddleware } from '../common/validate.middleware';
+import { IConfigService } from '../config/config.service.interface';
 
 @injectable()
 export class UsersController extends BaseController implements IUserController {
 	constructor(
 		@inject(TYPES.ILogger) private loggerService: ILogger,
 		@inject(TYPES.UserService) private userService: IUserService,
+		@inject(TYPES.ConfigService) private config: IConfigService,
 	) {
 		super(loggerService);
 
@@ -33,6 +36,12 @@ export class UsersController extends BaseController implements IUserController {
 				func: this.register,
 				middlewares: [new ValidateMiddleware(UserRegisterDto)],
 			},
+			{
+				path: '/info',
+				method: 'get',
+				func: this.info,
+				middlewares: [],
+			},
 		]);
 	}
 
@@ -47,7 +56,10 @@ export class UsersController extends BaseController implements IUserController {
 			return next(new HTTPError(404, 'Not found', 'login'));
 		}
 
-		res.send({});
+		const secret = await this.config.get<string>('SECRET');
+		const JWT = await this.signJWT(req.body.email, secret);
+
+		res.send({ JWT });
 	}
 
 	async register(
@@ -62,5 +74,26 @@ export class UsersController extends BaseController implements IUserController {
 		}
 
 		res.send({ email: result.email, id: result.id });
+	}
+
+	async info(req: Request, res: Response, next: NextFunction): Promise<void> {
+		res.send({ email: req.user });
+	}
+
+	private signJWT(email: string, secret: string): Promise<string> {
+		return new Promise<string>((resolve, reject) => {
+			sign(
+				{ email, iat: Math.floor(Date.now() / 1000) },
+				secret,
+				{ algorithm: 'HS256' },
+				(err, token) => {
+					if (err) {
+						reject(err);
+					} else {
+						resolve(token as string);
+					}
+				},
+			);
+		});
 	}
 }
